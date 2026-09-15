@@ -33,12 +33,6 @@ export default function ProductsPage({ products, onSave, onDelete }: Props) {
     setIsNew(true);
   };
 
-  const handleSave = (p: Product) => {
-    onSave(p);
-    setEditProd(null);
-    setIsNew(false);
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -47,19 +41,14 @@ export default function ProductsPage({ products, onSave, onDelete }: Props) {
           <p className="font-body text-sm" style={{ color: 'var(--color-text-muted)' }}>{products.length} produk</p>
         </div>
         <Button onClick={openNew} className="rounded-full font-body text-sm h-9 px-4"
-          style={{ background: 'var(--color-success)', color: 'white' }}>
-          + Tambah
-        </Button>
+          style={{ background: 'var(--color-success)', color: 'white' }}>+ Tambah</Button>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-2">
         <Input placeholder="Cari produk..." value={search} onChange={e => setSearch(e.target.value)}
           className="flex-1 h-9 rounded-full font-body text-sm" />
         <Select value={catFilter} onValueChange={v => setCatFilter(v as any)}>
-          <SelectTrigger className="w-36 h-9 rounded-full font-body text-sm">
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="w-36 h-9 rounded-full font-body text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Semua</SelectItem>
             {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.icon} {c.label}</SelectItem>)}
@@ -67,7 +56,6 @@ export default function ProductsPage({ products, onSave, onDelete }: Props) {
         </Select>
       </div>
 
-      {/* Product Cards (mobile-friendly) */}
       {filtered.length === 0 ? (
         <div className="text-center py-12 font-body text-sm" style={{ color: 'var(--color-text-muted)' }}>
           {products.length === 0 ? 'Belum ada produk. Tap "+ Tambah" untuk mulai.' : 'Produk tidak ditemukan.'}
@@ -77,12 +65,12 @@ export default function ProductsPage({ products, onSave, onDelete }: Props) {
           {filtered.map(p => {
             const margin = p.priceSell - p.priceBuy;
             const marginPct = p.priceBuy > 0 ? ((margin / p.priceBuy) * 100).toFixed(0) : '0';
-            const hasWholesale = p.priceWholesale && p.wholesaleMin;
+            const hasSemi = p.priceSemiWholesale && p.semiWholesaleMin;
+            const hasGrosir = p.priceWholesale && p.wholesaleMin;
             return (
-              <div key={p.id} className="rounded-xl p-3.5 flex items-center gap-3"
+              <div key={p.id} className="rounded-xl p-3.5 flex items-start gap-3"
                 style={{ background: 'var(--color-surface-elevated)', border: '1px solid var(--color-border-subtle)' }}>
-                {/* Thumbnail */}
-                <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0" style={{ background: 'var(--color-primary-container)' }}>
+                <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 mt-0.5" style={{ background: 'var(--color-primary-container)' }}>
                   {p.image ? (
                     <img src={p.image} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                   ) : (
@@ -92,27 +80,30 @@ export default function ProductsPage({ products, onSave, onDelete }: Props) {
                   )}
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-body text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>
-                      {p.name}
-                    </span>
+                    <span className="font-body text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>{p.name}</span>
                     {p.badge && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0"
-                        style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                        {p.badge}
-                      </span>
+                        style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>{p.badge}</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="font-display text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
-                      {formatRp(p.priceSell)}<span className="font-body text-[10px] font-normal" style={{ color: 'var(--color-text-muted)' }}>/{p.unit}</span>
+                  {/* Tier prices */}
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
+                    <span className="font-body text-[11px] px-1.5 py-0.5 rounded"
+                      style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                      Eceran: {formatRp(p.priceSell)}/{p.unit}
                     </span>
-                    {hasWholesale && (
-                      <span className="font-body text-[10px] px-1.5 py-0.5 rounded-full"
+                    {hasSemi && (
+                      <span className="font-body text-[11px] px-1.5 py-0.5 rounded"
+                        style={{ background: 'var(--color-warning-light)', color: 'oklch(45% 0.12 85)' }}>
+                        ≥{p.semiWholesaleMin}: {formatRp(p.priceSemiWholesale!)}
+                      </span>
+                    )}
+                    {hasGrosir && (
+                      <span className="font-body text-[11px] px-1.5 py-0.5 rounded"
                         style={{ background: 'var(--color-promo-bg)', color: 'var(--color-promo)' }}>
-                        Grosir ≥{p.wholesaleMin}: {formatRp(p.priceWholesale!)}
+                        ≥{p.wholesaleMin}: {formatRp(p.priceWholesale!)}
                       </span>
                     )}
                   </div>
@@ -124,21 +115,17 @@ export default function ProductsPage({ products, onSave, onDelete }: Props) {
                   </div>
                 </div>
 
-                {/* Stock */}
                 <div className="text-center shrink-0">
                   <span className="px-2 py-0.5 rounded-full text-xs font-semibold block"
                     style={{
                       background: p.stock <= 5 ? 'var(--color-accent-light)' : 'var(--color-success-light)',
                       color: p.stock <= 5 ? 'var(--color-accent)' : 'var(--color-success)',
-                    }}>
-                    {p.stock}
-                  </span>
+                    }}>{p.stock}</span>
                   <span className="text-[10px] mt-0.5 block" style={{ color: 'var(--color-text-muted)' }}>{p.unit}</span>
                 </div>
 
-                {/* Edit */}
                 <button onClick={() => { setEditProd(p); setIsNew(false); }}
-                  className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
+                  className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-0.5"
                   style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -151,10 +138,9 @@ export default function ProductsPage({ products, onSave, onDelete }: Props) {
         </div>
       )}
 
-      {/* Edit Dialog */}
       {editProd && (
         <ProductForm product={editProd} isNew={isNew}
-          onSave={handleSave}
+          onSave={p => { onSave(p); setEditProd(null); setIsNew(false); }}
           onDelete={!isNew ? () => { onDelete(editProd.id); setEditProd(null); } : undefined}
           onClose={() => { setEditProd(null); setIsNew(false); }} />
       )}
@@ -162,18 +148,23 @@ export default function ProductsPage({ products, onSave, onDelete }: Props) {
   );
 }
 
+/* ========== PRODUCT FORM (3-Tier) ========== */
 function ProductForm({ product, isNew, onSave, onDelete, onClose }: {
   product: Product; isNew: boolean;
   onSave: (p: Product) => void; onDelete?: () => void; onClose: () => void;
 }) {
   const [f, setF] = useState(product);
-  const [hasWholesale, setHasWholesale] = useState(!!(product.priceWholesale && product.wholesaleMin));
+  const [hasTiers, setHasTiers] = useState(
+    !!(product.priceSemiWholesale || product.priceWholesale)
+  );
   const update = (patch: Partial<Product>) => setF(prev => ({ ...prev, ...patch }));
 
   const handleSave = () => {
     if (!f.name) return;
     const saved = { ...f };
-    if (!hasWholesale) {
+    if (!hasTiers) {
+      saved.priceSemiWholesale = undefined;
+      saved.semiWholesaleMin = undefined;
       saved.priceWholesale = undefined;
       saved.wholesaleMin = undefined;
     }
@@ -181,7 +172,8 @@ function ProductForm({ product, isNew, onSave, onDelete, onClose }: {
   };
 
   const marginRetail = f.priceSell - f.priceBuy;
-  const marginWholesale = (f.priceWholesale || 0) - f.priceBuy;
+  const marginSemi = (f.priceSemiWholesale || 0) - f.priceBuy;
+  const marginGrosir = (f.priceWholesale || 0) - f.priceBuy;
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
@@ -190,13 +182,11 @@ function ProductForm({ product, isNew, onSave, onDelete, onClose }: {
           <DialogTitle className="font-display text-base">{isNew ? '✨ Produk Baru' : '✏️ Edit Produk'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-1">
-          {/* Name */}
           <div>
             <Label className="font-body text-xs">Nama Produk *</Label>
             <Input value={f.name} onChange={e => update({ name: e.target.value })} className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="Contoh: Beras SPHP 5kg" />
           </div>
 
-          {/* Category + Unit */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="font-body text-xs">Kategori</Label>
@@ -211,83 +201,108 @@ function ProductForm({ product, isNew, onSave, onDelete, onClose }: {
             </div>
           </div>
 
-          {/* Price Buy */}
           <div>
             <Label className="font-body text-xs">Harga Beli / Modal (per {f.unit || 'unit'}) *</Label>
             <Input type="number" inputMode="numeric" value={f.priceBuy || ''} onChange={e => update({ priceBuy: +e.target.value })}
-              className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="55000" />
+              className="mt-1 h-9 rounded-lg font-body text-sm" />
           </div>
 
-          {/* Price Sell (Retail) */}
-          <div>
-            <Label className="font-body text-xs">Harga Jual Satuan (per {f.unit || 'unit'}) *</Label>
-            <Input type="number" inputMode="numeric" value={f.priceSell || ''} onChange={e => update({ priceSell: +e.target.value })}
-              className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="62000" />
+          {/* === TIER 1: ECERAN === */}
+          <div className="rounded-lg p-3" style={{ background: 'oklch(95% 0.02 230 / 0.5)', border: '1px solid oklch(88% 0.04 230 / 0.5)' }}>
+            <Label className="font-body text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>🏷️ Tier 1 — Eceran</Label>
+            <div className="mt-1.5">
+              <Label className="font-body text-[11px]">Harga Jual per {f.unit || 'unit'} *</Label>
+              <Input type="number" inputMode="numeric" value={f.priceSell || ''} onChange={e => update({ priceSell: +e.target.value })}
+                className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="62000" />
+            </div>
             {f.priceBuy > 0 && f.priceSell > 0 && (
-              <p className="font-body text-xs mt-1" style={{ color: marginRetail > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
-                Margin satuan: {formatRp(marginRetail)} ({((marginRetail / f.priceBuy) * 100).toFixed(1)}%)
+              <p className="font-body text-[11px] mt-1" style={{ color: marginRetail > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
+                Margin: {formatRp(marginRetail)} ({((marginRetail / f.priceBuy) * 100).toFixed(1)}%)
               </p>
             )}
           </div>
 
-          {/* Wholesale Toggle */}
+          {/* Toggle Multi-Tier */}
           <div className="rounded-lg p-3" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-subtle)' }}>
             <div className="flex items-center justify-between">
               <div>
-                <Label className="font-body text-xs font-semibold">Harga Grosir</Label>
+                <Label className="font-body text-xs font-semibold">Harga Bertingkat</Label>
                 <p className="font-body text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                  Harga berbeda untuk pembelian dalam jumlah banyak
+                  Harga berbeda untuk semi-grosir &amp; grosir
                 </p>
               </div>
-              <Switch checked={hasWholesale} onCheckedChange={setHasWholesale} />
+              <Switch checked={hasTiers} onCheckedChange={setHasTiers} />
             </div>
+          </div>
 
-            {hasWholesale && (
-              <div className="mt-3 space-y-2">
-                <div className="grid grid-cols-2 gap-3">
+          {hasTiers && (
+            <>
+              {/* === TIER 2: SEMI-GROSIR === */}
+              <div className="rounded-lg p-3" style={{ background: 'oklch(94% 0.03 85 / 0.5)', border: '1px solid oklch(88% 0.05 85 / 0.5)' }}>
+                <Label className="font-body text-xs font-semibold" style={{ color: 'oklch(45% 0.12 85)' }}>📦 Tier 2 — Semi-Grosir</Label>
+                <div className="grid grid-cols-2 gap-2 mt-1.5">
                   <div>
-                    <Label className="font-body text-[11px]">Minimal Beli</Label>
+                    <Label className="font-body text-[11px]">Minimal</Label>
                     <div className="flex items-center gap-1 mt-1">
-                      <Input type="number" inputMode="numeric" value={f.wholesaleMin || ''} onChange={e => update({ wholesaleMin: +e.target.value })}
-                        className="h-9 rounded-lg font-body text-sm" placeholder="10" />
-                      <span className="font-body text-xs shrink-0" style={{ color: 'var(--color-text-muted)' }}>{f.unit}</span>
+                      <Input type="number" inputMode="numeric" value={f.semiWholesaleMin || ''} onChange={e => update({ semiWholesaleMin: +e.target.value })}
+                        className="h-9 rounded-lg font-body text-sm" placeholder="6" />
+                      <span className="font-body text-[11px] shrink-0" style={{ color: 'var(--color-text-muted)' }}>{f.unit}</span>
                     </div>
                   </div>
                   <div>
-                    <Label className="font-body text-[11px]">Harga Grosir (per {f.unit || 'unit'})</Label>
-                    <Input type="number" inputMode="numeric" value={f.priceWholesale || ''} onChange={e => update({ priceWholesale: +e.target.value })}
+                    <Label className="font-body text-[11px]">Harga per {f.unit || 'unit'}</Label>
+                    <Input type="number" inputMode="numeric" value={f.priceSemiWholesale || ''} onChange={e => update({ priceSemiWholesale: +e.target.value })}
                       className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="60000" />
                   </div>
                 </div>
-                {f.priceBuy > 0 && f.priceWholesale && f.priceWholesale > 0 && (
-                  <p className="font-body text-xs" style={{ color: marginWholesale > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
-                    Margin grosir: {formatRp(marginWholesale)} ({((marginWholesale / f.priceBuy) * 100).toFixed(1)}%)
-                    {f.wholesaleMin && f.wholesaleMin > 0 && (
-                      <span style={{ color: 'var(--color-text-muted)' }}>
-                        {' '}· Min {f.wholesaleMin} {f.unit} = {formatRp(f.priceWholesale * f.wholesaleMin)}/order
-                      </span>
-                    )}
+                {f.priceBuy > 0 && f.priceSemiWholesale && f.priceSemiWholesale > 0 && (
+                  <p className="font-body text-[11px] mt-1" style={{ color: marginSemi > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
+                    Margin: {formatRp(marginSemi)} ({((marginSemi / f.priceBuy) * 100).toFixed(1)}%)
+                    {f.semiWholesaleMin ? ` · Min order: ${formatRp(f.priceSemiWholesale * f.semiWholesaleMin)}` : ''}
                   </p>
                 )}
               </div>
-            )}
-          </div>
 
-          {/* Stock */}
+              {/* === TIER 3: GROSIR === */}
+              <div className="rounded-lg p-3" style={{ background: 'oklch(95% 0.03 145 / 0.5)', border: '1px solid oklch(88% 0.05 145 / 0.5)' }}>
+                <Label className="font-body text-xs font-semibold" style={{ color: 'var(--color-promo)' }}>🚛 Tier 3 — Grosir</Label>
+                <div className="grid grid-cols-2 gap-2 mt-1.5">
+                  <div>
+                    <Label className="font-body text-[11px]">Minimal</Label>
+                    <div className="flex items-center gap-1 mt-1">
+                      <Input type="number" inputMode="numeric" value={f.wholesaleMin || ''} onChange={e => update({ wholesaleMin: +e.target.value })}
+                        className="h-9 rounded-lg font-body text-sm" placeholder="25" />
+                      <span className="font-body text-[11px] shrink-0" style={{ color: 'var(--color-text-muted)' }}>{f.unit}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="font-body text-[11px]">Harga per {f.unit || 'unit'}</Label>
+                    <Input type="number" inputMode="numeric" value={f.priceWholesale || ''} onChange={e => update({ priceWholesale: +e.target.value })}
+                      className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="58000" />
+                  </div>
+                </div>
+                {f.priceBuy > 0 && f.priceWholesale && f.priceWholesale > 0 && (
+                  <p className="font-body text-[11px] mt-1" style={{ color: marginGrosir > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
+                    Margin: {formatRp(marginGrosir)} ({((marginGrosir / f.priceBuy) * 100).toFixed(1)}%)
+                    {f.wholesaleMin ? ` · Min order: ${formatRp(f.priceWholesale * f.wholesaleMin)}` : ''}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
           <div>
             <Label className="font-body text-xs">Stok (dalam {f.unit || 'unit'})</Label>
             <Input type="number" inputMode="numeric" value={f.stock} onChange={e => update({ stock: +e.target.value })}
-              className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="0" />
+              className="mt-1 h-9 rounded-lg font-body text-sm" />
           </div>
 
-          {/* Image */}
           <div>
             <Label className="font-body text-xs">URL Foto (opsional)</Label>
             <Input value={f.image} onChange={e => update({ image: e.target.value })} className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="https://..." />
             {f.image && <img src={f.image} alt="" className="mt-1.5 w-14 h-14 rounded-lg object-cover" onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />}
           </div>
 
-          {/* Badge */}
           <div>
             <Label className="font-body text-xs">Badge / Label</Label>
             <Select value={f.badge || '__none'} onValueChange={v => update({ badge: v === '__none' ? undefined : v })}>

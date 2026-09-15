@@ -131,17 +131,27 @@ function SaleForm({ products, onSave, onClose }: { products: Product[]; onSave: 
 
   const total = useMemo(() => items.reduce((s, i) => s + i.price * i.qty, 0), [items]);
 
+  // Determine price tier based on quantity
+  const getTierPrice = (prod: Product, qty: number): number => {
+    if (prod.priceWholesale && prod.wholesaleMin && qty >= prod.wholesaleMin) return prod.priceWholesale;
+    if (prod.priceSemiWholesale && prod.semiWholesaleMin && qty >= prod.semiWholesaleMin) return prod.priceSemiWholesale;
+    return prod.priceSell;
+  };
+
+  const getTierLabel = (prod: Product, qty: number): string => {
+    if (prod.priceWholesale && prod.wholesaleMin && qty >= prod.wholesaleMin) return 'Grosir';
+    if (prod.priceSemiWholesale && prod.semiWholesaleMin && qty >= prod.semiWholesaleMin) return 'Semi-Grosir';
+    return '';
+  };
+
   const addItem = () => {
     const prod = products.find(p => p.id === selProd);
     if (!prod) return;
-    // Determine price: wholesale if qty >= wholesaleMin
-    const useWholesale = prod.priceWholesale && prod.wholesaleMin && selQty >= prod.wholesaleMin;
-    const unitPrice = useWholesale ? prod.priceWholesale! : prod.priceSell;
+    const unitPrice = getTierPrice(prod, selQty);
     const existing = items.find(i => i.productId === prod.id);
     if (existing) {
       const newQty = existing.qty + selQty;
-      const newUseWholesale = prod.priceWholesale && prod.wholesaleMin && newQty >= prod.wholesaleMin;
-      const newPrice = newUseWholesale ? prod.priceWholesale! : prod.priceSell;
+      const newPrice = getTierPrice(prod, newQty);
       setItems(items.map(i => i.productId === prod.id ? { ...i, qty: newQty, price: newPrice } : i));
     } else {
       setItems([...items, { _key: Date.now(), productId: prod.id, productName: prod.name, qty: selQty, price: unitPrice }]);
@@ -186,13 +196,13 @@ function SaleForm({ products, onSave, onClose }: { products: Product[]; onSave: 
             <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--color-border-subtle)' }}>
               {items.map(item => {
                 const prod = products.find(p => p.id === item.productId);
-                const isWholesale = prod?.priceWholesale && prod?.wholesaleMin && item.qty >= prod.wholesaleMin;
+                const tierLabel = prod ? getTierLabel(prod, item.qty) : '';
                 return (
                 <div key={item._key} className="flex items-center gap-2 px-3 py-2 border-b last:border-b-0"
                   style={{ borderColor: 'var(--color-border-subtle)', background: 'var(--color-bg)' }}>
                   <span className="flex-1 font-body text-sm" style={{ color: 'var(--color-text-primary)' }}>
                     {item.productName} <span style={{ color: 'var(--color-text-muted)' }}>x{item.qty} @{formatRp(item.price)}</span>
-                    {isWholesale && <span className="ml-1 text-[10px] px-1 py-0.5 rounded" style={{ background: 'var(--color-promo-bg)', color: 'var(--color-promo)' }}>Grosir</span>}
+                    {tierLabel && <span className="ml-1 text-[10px] px-1 py-0.5 rounded" style={{ background: tierLabel === 'Grosir' ? 'var(--color-promo-bg)' : 'var(--color-warning-light)', color: tierLabel === 'Grosir' ? 'var(--color-promo)' : 'oklch(45% 0.12 85)' }}>{tierLabel}</span>}
                   </span>
                   <span className="font-display text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
                     {formatRp(item.price * item.qty)}

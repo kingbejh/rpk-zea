@@ -6,9 +6,11 @@ export interface Product {
   name: string;
   category: Category;
   priceBuy: number;
-  priceSell: number;
-  priceWholesale?: number;  // harga grosir per unit
-  wholesaleMin?: number;    // minimal qty untuk harga grosir
+  priceSell: number;               // harga eceran per unit
+  priceSemiWholesale?: number;     // harga semi-grosir per unit
+  semiWholesaleMin?: number;       // minimal qty untuk semi-grosir
+  priceWholesale?: number;         // harga grosir per unit
+  wholesaleMin?: number;           // minimal qty untuk grosir
   stock: number;
   unit: string;
   image: string;
