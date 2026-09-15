@@ -124,19 +124,19 @@ export const db = {
   }),
 
   // Writes (dual: localStorage + Firebase)
-  saveProducts: (p: Product[]) => saveBoth(KEYS.products, 'store/products', p),
-  saveTxns: (t: Transaction[]) => saveBoth(KEYS.transactions, 'store/transactions', t),
-  saveCapital: (c: number) => saveBoth(KEYS.capital, 'store/capital', c),
-  saveSettings: (s: StoreSettings) => saveBoth(KEYS.settings, 'store/settings', s),
+  saveProducts: (p: Product[]) => saveBoth(KEYS.products, 'rpk-zea/products', p),
+  saveTxns: (t: Transaction[]) => saveBoth(KEYS.transactions, 'rpk-zea/transactions', t),
+  saveCapital: (c: number) => saveBoth(KEYS.capital, 'rpk-zea/capital', c),
+  saveSettings: (s: StoreSettings) => saveBoth(KEYS.settings, 'rpk-zea/settings', s),
 
   // Async reads from Firebase (initial sync)
   syncFromFirebase: async () => {
     if (!isFirebaseConfigured()) return null;
     const [products, txns, capital, settings] = await Promise.all([
-      loadBoth<Product[]>(KEYS.products, 'store/products', defaultProducts),
-      loadBoth<Transaction[]>(KEYS.transactions, 'store/transactions', []),
-      loadBoth<number>(KEYS.capital, 'store/capital', 5000000),
-      loadBoth<StoreSettings>(KEYS.settings, 'store/settings', db.getSettings()),
+      loadBoth<Product[]>(KEYS.products, 'rpk-zea/products', defaultProducts),
+      loadBoth<Transaction[]>(KEYS.transactions, 'rpk-zea/transactions', []),
+      loadBoth<number>(KEYS.capital, 'rpk-zea/capital', 5000000),
+      loadBoth<StoreSettings>(KEYS.settings, 'rpk-zea/settings', db.getSettings()),
     ]);
     return { products, txns, capital, settings };
   },

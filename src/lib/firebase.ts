@@ -8,7 +8,7 @@ interface FirebaseConfig {
 // *** GANTI URL INI dengan URL database Firebase kamu ***
 // Buka console.firebase.google.com → Realtime Database → Copy URL
 const config: FirebaseConfig = {
-  databaseURL: '', // contoh: 'https://rpk-zea-default-rtdb.asia-southeast1.firebasedatabase.app'
+  databaseURL: 'https://studio-1290501711-39566-default-rtdb.asia-southeast1.firebasedatabase.app',
 };
 
 export function isFirebaseConfigured(): boolean {
