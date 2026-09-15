@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* RPK ZEA Brand — Sky Blue primary, Red accent */
+    --color-primary: oklch(55% 0.14 230);
+    --color-primary-hover: oklch(48% 0.14 230);
+    --color-primary-light: oklch(92% 0.04 230);
+    --color-primary-container: oklch(95% 0.02 230);
+
+    --color-accent: oklch(55% 0.22 25);
+    --color-accent-hover: oklch(48% 0.22 25);
+    --color-accent-light: oklch(93% 0.04 25);
+
+    /* Neutrals — tinted toward blue hue */
+    --color-text-primary: oklch(18% 0.01 230);
+    --color-text-secondary: oklch(42% 0.01 230);
+    --color-text-muted: oklch(58% 0.01 230);
+    --color-bg: oklch(98.5% 0.003 90);
+    --color-surface: oklch(99% 0.002 90);
+    --color-surface-elevated: oklch(100% 0 0);
+    --color-border: oklch(90% 0.008 230);
+    --color-border-subtle: oklch(94% 0.005 230);
+
+    /* Semantic */
+    --color-success: oklch(55% 0.14 145);
+    --color-success-light: oklch(92% 0.04 145);
+    --color-warning: oklch(70% 0.15 85);
+    --color-warning-light: oklch(94% 0.04 85);
+    --color-error: oklch(55% 0.18 25);
+    --color-info: oklch(55% 0.10 240);
+
+    /* Cart / commerce */
+    --color-cart-badge: oklch(55% 0.22 25);
+    --color-promo: oklch(58% 0.16 145);
+    --color-promo-bg: oklch(95% 0.03 145);
+
+    /* shadcn HSL bridge */
+    --background: 45 20% 97%;
+    --foreground: 215 30% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 30% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 30% 15%;
+    --primary: 210 60% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 15% 94%;
+    --secondary-foreground: 215 30% 15%;
+    --muted: 210 10% 95%;
+    --muted-foreground: 215 10% 45%;
+    --accent: 5 70% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 5 80% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 15% 90%;
+    --input: 210 15% 90%;
+    --ring: 210 60% 42%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss03";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Utility classes for OKLCH colors */
+.text-brand { color: var(--color-primary); }
+.text-brand-accent { color: var(--color-accent); }
+.bg-brand { background-color: var(--color-primary); }
+.bg-brand-light { background-color: var(--color-primary-light); }
+.bg-brand-container { background-color: var(--color-primary-container); }
+.bg-accent { background-color: var(--color-accent); }
+.bg-accent-light { background-color: var(--color-accent-light); }
+.bg-promo { background-color: var(--color-promo-bg); }
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 9999px; }
