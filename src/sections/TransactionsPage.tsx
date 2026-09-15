@@ -134,11 +134,17 @@ function SaleForm({ products, onSave, onClose }: { products: Product[]; onSave: 
   const addItem = () => {
     const prod = products.find(p => p.id === selProd);
     if (!prod) return;
+    // Determine price: wholesale if qty >= wholesaleMin
+    const useWholesale = prod.priceWholesale && prod.wholesaleMin && selQty >= prod.wholesaleMin;
+    const unitPrice = useWholesale ? prod.priceWholesale! : prod.priceSell;
     const existing = items.find(i => i.productId === prod.id);
     if (existing) {
-      setItems(items.map(i => i.productId === prod.id ? { ...i, qty: i.qty + selQty } : i));
+      const newQty = existing.qty + selQty;
+      const newUseWholesale = prod.priceWholesale && prod.wholesaleMin && newQty >= prod.wholesaleMin;
+      const newPrice = newUseWholesale ? prod.priceWholesale! : prod.priceSell;
+      setItems(items.map(i => i.productId === prod.id ? { ...i, qty: newQty, price: newPrice } : i));
     } else {
-      setItems([...items, { _key: Date.now(), productId: prod.id, productName: prod.name, qty: selQty, price: prod.priceSell }]);
+      setItems([...items, { _key: Date.now(), productId: prod.id, productName: prod.name, qty: selQty, price: unitPrice }]);
     }
     setSelProd('');
     setSelQty(1);
@@ -166,7 +172,10 @@ function SaleForm({ products, onSave, onClose }: { products: Product[]; onSave: 
           <div className="flex gap-2">
             <Select value={selProd} onValueChange={setSelProd}>
               <SelectTrigger className="flex-1 h-9 rounded-lg font-body text-sm"><SelectValue placeholder="Pilih produk" /></SelectTrigger>
-              <SelectContent>{products.filter(p=>p.stock>0||p.stock<0).map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({formatRp(p.priceSell)})</SelectItem>)}</SelectContent>
+              <SelectContent>{products.filter(p=>p.stock>0||p.stock<0).map(p => {
+                const wsInfo = p.priceWholesale && p.wholesaleMin ? ` | ≥${p.wholesaleMin}: ${formatRp(p.priceWholesale)}` : '';
+                return <SelectItem key={p.id} value={p.id}>{p.name} ({formatRp(p.priceSell)}{wsInfo})</SelectItem>;
+              })}</SelectContent>
             </Select>
             <Input type="number" min={1} value={selQty} onChange={e => setSelQty(+e.target.value)} className="w-16 h-9 rounded-lg font-body text-sm text-center" />
             <Button onClick={addItem} disabled={!selProd} className="h-9 rounded-lg font-body text-sm px-3"
@@ -175,18 +184,23 @@ function SaleForm({ products, onSave, onClose }: { products: Product[]; onSave: 
 
           {items.length > 0 && (
             <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--color-border-subtle)' }}>
-              {items.map(item => (
+              {items.map(item => {
+                const prod = products.find(p => p.id === item.productId);
+                const isWholesale = prod?.priceWholesale && prod?.wholesaleMin && item.qty >= prod.wholesaleMin;
+                return (
                 <div key={item._key} className="flex items-center gap-2 px-3 py-2 border-b last:border-b-0"
                   style={{ borderColor: 'var(--color-border-subtle)', background: 'var(--color-bg)' }}>
                   <span className="flex-1 font-body text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                    {item.productName} <span style={{ color: 'var(--color-text-muted)' }}>x{item.qty}</span>
+                    {item.productName} <span style={{ color: 'var(--color-text-muted)' }}>x{item.qty} @{formatRp(item.price)}</span>
+                    {isWholesale && <span className="ml-1 text-[10px] px-1 py-0.5 rounded" style={{ background: 'var(--color-promo-bg)', color: 'var(--color-promo)' }}>Grosir</span>}
                   </span>
                   <span className="font-display text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
                     {formatRp(item.price * item.qty)}
                   </span>
                   <button onClick={() => setItems(items.filter(i => i._key !== item._key))} className="text-xs opacity-50 hover:opacity-100" style={{ color: 'var(--color-error)' }}>✕</button>
                 </div>
-              ))}
+                );
+              })}
               <div className="flex items-center justify-between px-3 py-2.5 font-display font-bold text-base"
                 style={{ background: 'var(--color-success-light)', color: 'var(--color-success)' }}>
                 <span>Total</span><span>{formatRp(total)}</span>
