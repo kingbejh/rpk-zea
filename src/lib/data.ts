@@ -5,16 +5,25 @@ export interface Product {
   id: string;
   name: string;
   category: Category;
-  priceBuy: number;
-  priceSell: number;               // harga eceran per unit
-  priceSemiWholesale?: number;     // harga semi-grosir per unit
-  semiWholesaleMin?: number;       // minimal qty untuk semi-grosir
-  priceWholesale?: number;         // harga grosir per unit
-  wholesaleMin?: number;           // minimal qty untuk grosir
+  priceBuy: number;                // modal per unit dasar
+  priceSell: number;               // harga eceran per unit dasar
+  // Semi-Grosir tier
+  semiWholesaleUnit?: string;      // satuan semi-grosir (contoh: "dus")
+  semiWholesaleQty?: number;       // isi per satuan (contoh: 6 pouch/dus)
+  semiWholesalePrice?: number;     // harga per satuan semi-grosir (contoh: 212000/dus)
+  semiWholesaleMin?: number;       // minimal beli (dalam satuan semi-grosir, contoh: 1 dus)
+  // Grosir tier
+  wholesaleUnit?: string;          // satuan grosir (biasanya sama dgn semi)
+  wholesaleQty?: number;           // isi per satuan
+  wholesalePrice?: number;         // harga per satuan grosir
+  wholesaleMin?: number;           // minimal beli (dalam satuan grosir)
   stock: number;
-  unit: string;
+  unit: string;                    // satuan dasar (pouch, btl, sak, dll)
   image: string;
   badge?: string;
+  // Legacy fields (backward compat)
+  priceSemiWholesale?: number;
+  priceWholesale?: number;
 }
 
 export type Category = 'beras' | 'minyak' | 'makanan' | 'minuman' | 'lainnya';

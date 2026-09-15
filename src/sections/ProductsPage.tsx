@@ -65,8 +65,8 @@ export default function ProductsPage({ products, onSave, onDelete }: Props) {
           {filtered.map(p => {
             const margin = p.priceSell - p.priceBuy;
             const marginPct = p.priceBuy > 0 ? ((margin / p.priceBuy) * 100).toFixed(0) : '0';
-            const hasSemi = p.priceSemiWholesale && p.semiWholesaleMin;
-            const hasGrosir = p.priceWholesale && p.wholesaleMin;
+            const hasSemi = p.semiWholesalePrice && p.semiWholesaleUnit;
+            const hasGrosir = p.wholesalePrice && p.wholesaleUnit;
             return (
               <div key={p.id} className="rounded-xl p-3.5 flex items-start gap-3"
                 style={{ background: 'var(--color-surface-elevated)', border: '1px solid var(--color-border-subtle)' }}>
@@ -88,27 +88,28 @@ export default function ProductsPage({ products, onSave, onDelete }: Props) {
                         style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>{p.badge}</span>
                     )}
                   </div>
-                  {/* Tier prices */}
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
                     <span className="font-body text-[11px] px-1.5 py-0.5 rounded"
                       style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                      Eceran: {formatRp(p.priceSell)}/{p.unit}
+                      {formatRp(p.priceSell)}/{p.unit}
                     </span>
                     {hasSemi && (
                       <span className="font-body text-[11px] px-1.5 py-0.5 rounded"
                         style={{ background: 'var(--color-warning-light)', color: 'oklch(45% 0.12 85)' }}>
-                        ≥{p.semiWholesaleMin}: {formatRp(p.priceSemiWholesale!)}
+                        {formatRp(p.semiWholesalePrice!)}/{p.semiWholesaleUnit}
+                        {p.semiWholesaleMin && p.semiWholesaleMin > 1 ? ` (≥${p.semiWholesaleMin})` : ''}
                       </span>
                     )}
                     {hasGrosir && (
                       <span className="font-body text-[11px] px-1.5 py-0.5 rounded"
                         style={{ background: 'var(--color-promo-bg)', color: 'var(--color-promo)' }}>
-                        ≥{p.wholesaleMin}: {formatRp(p.priceWholesale!)}
+                        {formatRp(p.wholesalePrice!)}/{p.wholesaleUnit}
+                        {p.wholesaleMin && p.wholesaleMin > 1 ? ` (≥${p.wholesaleMin})` : ''}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 font-body text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-                    <span>Modal: {formatRp(p.priceBuy)}</span>
+                    <span>Modal: {formatRp(p.priceBuy)}/{p.unit}</span>
                     <span style={{ color: margin > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
                       +{formatRp(margin)} ({marginPct}%)
                     </span>
@@ -148,14 +149,14 @@ export default function ProductsPage({ products, onSave, onDelete }: Props) {
   );
 }
 
-/* ========== PRODUCT FORM (3-Tier) ========== */
+/* ========== PRODUCT FORM (3-Tier with independent units) ========== */
 function ProductForm({ product, isNew, onSave, onDelete, onClose }: {
   product: Product; isNew: boolean;
   onSave: (p: Product) => void; onDelete?: () => void; onClose: () => void;
 }) {
   const [f, setF] = useState(product);
   const [hasTiers, setHasTiers] = useState(
-    !!(product.priceSemiWholesale || product.priceWholesale)
+    !!(product.semiWholesalePrice || product.wholesalePrice || product.priceSemiWholesale || product.priceWholesale)
   );
   const update = (patch: Partial<Product>) => setF(prev => ({ ...prev, ...patch }));
 
@@ -163,17 +164,28 @@ function ProductForm({ product, isNew, onSave, onDelete, onClose }: {
     if (!f.name) return;
     const saved = { ...f };
     if (!hasTiers) {
-      saved.priceSemiWholesale = undefined;
+      saved.semiWholesaleUnit = undefined;
+      saved.semiWholesaleQty = undefined;
+      saved.semiWholesalePrice = undefined;
       saved.semiWholesaleMin = undefined;
-      saved.priceWholesale = undefined;
+      saved.wholesaleUnit = undefined;
+      saved.wholesaleQty = undefined;
+      saved.wholesalePrice = undefined;
       saved.wholesaleMin = undefined;
     }
+    // Clear legacy fields
+    saved.priceSemiWholesale = undefined;
+    saved.priceWholesale = undefined;
     onSave(saved);
   };
 
   const marginRetail = f.priceSell - f.priceBuy;
-  const marginSemi = (f.priceSemiWholesale || 0) - f.priceBuy;
-  const marginGrosir = (f.priceWholesale || 0) - f.priceBuy;
+  // Semi-grosir margin per unit dasar
+  const semiPerUnit = (f.semiWholesalePrice && f.semiWholesaleQty && f.semiWholesaleQty > 0) ? f.semiWholesalePrice / f.semiWholesaleQty : 0;
+  const marginSemi = semiPerUnit - f.priceBuy;
+  // Grosir margin per unit dasar
+  const grosirPerUnit = (f.wholesalePrice && f.wholesaleQty && f.wholesaleQty > 0) ? f.wholesalePrice / f.wholesaleQty : 0;
+  const marginGrosir = grosirPerUnit - f.priceBuy;
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
@@ -184,7 +196,7 @@ function ProductForm({ product, isNew, onSave, onDelete, onClose }: {
         <div className="space-y-3 py-1">
           <div>
             <Label className="font-body text-xs">Nama Produk *</Label>
-            <Input value={f.name} onChange={e => update({ name: e.target.value })} className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="Contoh: Beras SPHP 5kg" />
+            <Input value={f.name} onChange={e => update({ name: e.target.value })} className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="Contoh: Minyakita 2L Pouch" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -196,8 +208,8 @@ function ProductForm({ product, isNew, onSave, onDelete, onClose }: {
               </Select>
             </div>
             <div>
-              <Label className="font-body text-xs">Satuan</Label>
-              <Input value={f.unit} onChange={e => update({ unit: e.target.value })} className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="sak, btl, kg" />
+              <Label className="font-body text-xs">Satuan Dasar</Label>
+              <Input value={f.unit} onChange={e => update({ unit: e.target.value })} className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="pouch, btl, sak" />
             </div>
           </div>
 
@@ -209,15 +221,14 @@ function ProductForm({ product, isNew, onSave, onDelete, onClose }: {
 
           {/* === TIER 1: ECERAN === */}
           <div className="rounded-lg p-3" style={{ background: 'oklch(95% 0.02 230 / 0.5)', border: '1px solid oklch(88% 0.04 230 / 0.5)' }}>
-            <Label className="font-body text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>🏷️ Tier 1 — Eceran</Label>
+            <Label className="font-body text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>🏷️ Tier 1 — Eceran (per {f.unit || 'unit'})</Label>
             <div className="mt-1.5">
-              <Label className="font-body text-[11px]">Harga Jual per {f.unit || 'unit'} *</Label>
               <Input type="number" inputMode="numeric" value={f.priceSell || ''} onChange={e => update({ priceSell: +e.target.value })}
-                className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="62000" />
+                className="h-9 rounded-lg font-body text-sm" placeholder="36000" />
             </div>
             {f.priceBuy > 0 && f.priceSell > 0 && (
               <p className="font-body text-[11px] mt-1" style={{ color: marginRetail > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
-                Margin: {formatRp(marginRetail)} ({((marginRetail / f.priceBuy) * 100).toFixed(1)}%)
+                Margin: {formatRp(marginRetail)}/{f.unit} ({((marginRetail / f.priceBuy) * 100).toFixed(1)}%)
               </p>
             )}
           </div>
@@ -228,7 +239,7 @@ function ProductForm({ product, isNew, onSave, onDelete, onClose }: {
               <div>
                 <Label className="font-body text-xs font-semibold">Harga Bertingkat</Label>
                 <p className="font-body text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                  Harga berbeda untuk semi-grosir &amp; grosir
+                  Jual per dus/karung dengan harga berbeda
                 </p>
               </div>
               <Switch checked={hasTiers} onCheckedChange={setHasTiers} />
@@ -238,53 +249,81 @@ function ProductForm({ product, isNew, onSave, onDelete, onClose }: {
           {hasTiers && (
             <>
               {/* === TIER 2: SEMI-GROSIR === */}
-              <div className="rounded-lg p-3" style={{ background: 'oklch(94% 0.03 85 / 0.5)', border: '1px solid oklch(88% 0.05 85 / 0.5)' }}>
+              <div className="rounded-lg p-3 space-y-2" style={{ background: 'oklch(94% 0.03 85 / 0.5)', border: '1px solid oklch(88% 0.05 85 / 0.5)' }}>
                 <Label className="font-body text-xs font-semibold" style={{ color: 'oklch(45% 0.12 85)' }}>📦 Tier 2 — Semi-Grosir</Label>
-                <div className="grid grid-cols-2 gap-2 mt-1.5">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="font-body text-[11px]">Minimal</Label>
+                    <Label className="font-body text-[11px]">Satuan</Label>
+                    <Input value={f.semiWholesaleUnit || ''} onChange={e => update({ semiWholesaleUnit: e.target.value })}
+                      className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="dus" />
+                  </div>
+                  <div>
+                    <Label className="font-body text-[11px]">Isi per {f.semiWholesaleUnit || 'satuan'}</Label>
                     <div className="flex items-center gap-1 mt-1">
-                      <Input type="number" inputMode="numeric" value={f.semiWholesaleMin || ''} onChange={e => update({ semiWholesaleMin: +e.target.value })}
+                      <Input type="number" inputMode="numeric" value={f.semiWholesaleQty || ''} onChange={e => update({ semiWholesaleQty: +e.target.value })}
                         className="h-9 rounded-lg font-body text-sm" placeholder="6" />
                       <span className="font-body text-[11px] shrink-0" style={{ color: 'var(--color-text-muted)' }}>{f.unit}</span>
                     </div>
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="font-body text-[11px]">Harga per {f.unit || 'unit'}</Label>
-                    <Input type="number" inputMode="numeric" value={f.priceSemiWholesale || ''} onChange={e => update({ priceSemiWholesale: +e.target.value })}
-                      className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="60000" />
+                    <Label className="font-body text-[11px]">Harga per {f.semiWholesaleUnit || 'satuan'}</Label>
+                    <Input type="number" inputMode="numeric" value={f.semiWholesalePrice || ''} onChange={e => update({ semiWholesalePrice: +e.target.value })}
+                      className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="212000" />
+                  </div>
+                  <div>
+                    <Label className="font-body text-[11px]">Min. beli</Label>
+                    <div className="flex items-center gap-1 mt-1">
+                      <Input type="number" inputMode="numeric" value={f.semiWholesaleMin || ''} onChange={e => update({ semiWholesaleMin: +e.target.value })}
+                        className="h-9 rounded-lg font-body text-sm" placeholder="1" />
+                      <span className="font-body text-[11px] shrink-0" style={{ color: 'var(--color-text-muted)' }}>{f.semiWholesaleUnit || '-'}</span>
+                    </div>
                   </div>
                 </div>
-                {f.priceBuy > 0 && f.priceSemiWholesale && f.priceSemiWholesale > 0 && (
-                  <p className="font-body text-[11px] mt-1" style={{ color: marginSemi > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
-                    Margin: {formatRp(marginSemi)} ({((marginSemi / f.priceBuy) * 100).toFixed(1)}%)
-                    {f.semiWholesaleMin ? ` · Min order: ${formatRp(f.priceSemiWholesale * f.semiWholesaleMin)}` : ''}
+                {f.priceBuy > 0 && semiPerUnit > 0 && (
+                  <p className="font-body text-[11px]" style={{ color: marginSemi > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
+                    = {formatRp(semiPerUnit)}/{f.unit} · Margin: {formatRp(marginSemi)}/{f.unit} ({((marginSemi / f.priceBuy) * 100).toFixed(1)}%)
                   </p>
                 )}
               </div>
 
               {/* === TIER 3: GROSIR === */}
-              <div className="rounded-lg p-3" style={{ background: 'oklch(95% 0.03 145 / 0.5)', border: '1px solid oklch(88% 0.05 145 / 0.5)' }}>
+              <div className="rounded-lg p-3 space-y-2" style={{ background: 'oklch(95% 0.03 145 / 0.5)', border: '1px solid oklch(88% 0.05 145 / 0.5)' }}>
                 <Label className="font-body text-xs font-semibold" style={{ color: 'var(--color-promo)' }}>🚛 Tier 3 — Grosir</Label>
-                <div className="grid grid-cols-2 gap-2 mt-1.5">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="font-body text-[11px]">Minimal</Label>
+                    <Label className="font-body text-[11px]">Satuan</Label>
+                    <Input value={f.wholesaleUnit || ''} onChange={e => update({ wholesaleUnit: e.target.value })}
+                      className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="dus" />
+                  </div>
+                  <div>
+                    <Label className="font-body text-[11px]">Isi per {f.wholesaleUnit || 'satuan'}</Label>
                     <div className="flex items-center gap-1 mt-1">
-                      <Input type="number" inputMode="numeric" value={f.wholesaleMin || ''} onChange={e => update({ wholesaleMin: +e.target.value })}
-                        className="h-9 rounded-lg font-body text-sm" placeholder="25" />
+                      <Input type="number" inputMode="numeric" value={f.wholesaleQty || ''} onChange={e => update({ wholesaleQty: +e.target.value })}
+                        className="h-9 rounded-lg font-body text-sm" placeholder="6" />
                       <span className="font-body text-[11px] shrink-0" style={{ color: 'var(--color-text-muted)' }}>{f.unit}</span>
                     </div>
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="font-body text-[11px]">Harga per {f.unit || 'unit'}</Label>
-                    <Input type="number" inputMode="numeric" value={f.priceWholesale || ''} onChange={e => update({ priceWholesale: +e.target.value })}
-                      className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="58000" />
+                    <Label className="font-body text-[11px]">Harga per {f.wholesaleUnit || 'satuan'}</Label>
+                    <Input type="number" inputMode="numeric" value={f.wholesalePrice || ''} onChange={e => update({ wholesalePrice: +e.target.value })}
+                      className="mt-1 h-9 rounded-lg font-body text-sm" placeholder="210000" />
+                  </div>
+                  <div>
+                    <Label className="font-body text-[11px]">Min. beli</Label>
+                    <div className="flex items-center gap-1 mt-1">
+                      <Input type="number" inputMode="numeric" value={f.wholesaleMin || ''} onChange={e => update({ wholesaleMin: +e.target.value })}
+                        className="h-9 rounded-lg font-body text-sm" placeholder="25" />
+                      <span className="font-body text-[11px] shrink-0" style={{ color: 'var(--color-text-muted)' }}>{f.wholesaleUnit || '-'}</span>
+                    </div>
                   </div>
                 </div>
-                {f.priceBuy > 0 && f.priceWholesale && f.priceWholesale > 0 && (
-                  <p className="font-body text-[11px] mt-1" style={{ color: marginGrosir > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
-                    Margin: {formatRp(marginGrosir)} ({((marginGrosir / f.priceBuy) * 100).toFixed(1)}%)
-                    {f.wholesaleMin ? ` · Min order: ${formatRp(f.priceWholesale * f.wholesaleMin)}` : ''}
+                {f.priceBuy > 0 && grosirPerUnit > 0 && (
+                  <p className="font-body text-[11px]" style={{ color: marginGrosir > 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
+                    = {formatRp(grosirPerUnit)}/{f.unit} · Margin: {formatRp(marginGrosir)}/{f.unit} ({((marginGrosir / f.priceBuy) * 100).toFixed(1)}%)
                   </p>
                 )}
               </div>

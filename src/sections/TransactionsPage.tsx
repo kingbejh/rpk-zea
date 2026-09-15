@@ -124,39 +124,65 @@ export default function TransactionsPage({ products, txns, onAdd, onDelete }: Pr
 }
 
 function SaleForm({ products, onSave, onClose }: { products: Product[]; onSave: (t: Transaction) => void; onClose: () => void }) {
-  const [items, setItems] = useState<(SaleItem & { _key: number })[]>([]);
+  const [items, setItems] = useState<(SaleItem & { _key: number; tierLabel?: string })[]>([]);
   const [note, setNote] = useState('');
   const [selProd, setSelProd] = useState('');
+  const [selTier, setSelTier] = useState<'eceran' | 'semi' | 'grosir'>('eceran');
   const [selQty, setSelQty] = useState(1);
 
   const total = useMemo(() => items.reduce((s, i) => s + i.price * i.qty, 0), [items]);
 
-  // Determine price tier based on quantity
-  const getTierPrice = (prod: Product, qty: number): number => {
-    if (prod.priceWholesale && prod.wholesaleMin && qty >= prod.wholesaleMin) return prod.priceWholesale;
-    if (prod.priceSemiWholesale && prod.semiWholesaleMin && qty >= prod.semiWholesaleMin) return prod.priceSemiWholesale;
-    return prod.priceSell;
-  };
+  // Get available tiers for selected product
+  const selectedProduct = products.find(p => p.id === selProd);
+  const tiers = useMemo(() => {
+    if (!selectedProduct) return [];
+    const t: { id: 'eceran' | 'semi' | 'grosir'; label: string; unit: string; price: number; min: number; qtyPerUnit: number }[] = [];
+    t.push({ id: 'eceran', label: 'Eceran', unit: selectedProduct.unit, price: selectedProduct.priceSell, min: 1, qtyPerUnit: 1 });
+    if (selectedProduct.semiWholesalePrice && selectedProduct.semiWholesaleUnit) {
+      t.push({
+        id: 'semi', label: 'Semi-Grosir',
+        unit: selectedProduct.semiWholesaleUnit,
+        price: selectedProduct.semiWholesalePrice,
+        min: selectedProduct.semiWholesaleMin || 1,
+        qtyPerUnit: selectedProduct.semiWholesaleQty || 1,
+      });
+    }
+    if (selectedProduct.wholesalePrice && selectedProduct.wholesaleUnit) {
+      t.push({
+        id: 'grosir', label: 'Grosir',
+        unit: selectedProduct.wholesaleUnit,
+        price: selectedProduct.wholesalePrice,
+        min: selectedProduct.wholesaleMin || 1,
+        qtyPerUnit: selectedProduct.wholesaleQty || 1,
+      });
+    }
+    return t;
+  }, [selectedProduct]);
 
-  const getTierLabel = (prod: Product, qty: number): string => {
-    if (prod.priceWholesale && prod.wholesaleMin && qty >= prod.wholesaleMin) return 'Grosir';
-    if (prod.priceSemiWholesale && prod.semiWholesaleMin && qty >= prod.semiWholesaleMin) return 'Semi-Grosir';
-    return '';
+  // Reset tier when product changes
+  const handleProdChange = (id: string) => {
+    setSelProd(id);
+    setSelTier('eceran');
+    setSelQty(1);
   };
 
   const addItem = () => {
-    const prod = products.find(p => p.id === selProd);
-    if (!prod) return;
-    const unitPrice = getTierPrice(prod, selQty);
-    const existing = items.find(i => i.productId === prod.id);
-    if (existing) {
-      const newQty = existing.qty + selQty;
-      const newPrice = getTierPrice(prod, newQty);
-      setItems(items.map(i => i.productId === prod.id ? { ...i, qty: newQty, price: newPrice } : i));
-    } else {
-      setItems([...items, { _key: Date.now(), productId: prod.id, productName: prod.name, qty: selQty, price: unitPrice }]);
-    }
+    if (!selectedProduct) return;
+    const tier = tiers.find(t => t.id === selTier);
+    if (!tier) return;
+    const lineTotal = tier.price * selQty;
+    const stockUnits = tier.qtyPerUnit * selQty; // how many base units this uses
+
+    setItems(prev => [...prev, {
+      _key: Date.now(),
+      productId: selectedProduct.id,
+      productName: `${selectedProduct.name}${tier.id !== 'eceran' ? ` (${tier.label})` : ''}`,
+      qty: selQty,
+      price: tier.price,
+      tierLabel: tier.id !== 'eceran' ? tier.label : undefined,
+    }]);
     setSelProd('');
+    setSelTier('eceran');
     setSelQty(1);
   };
 
@@ -166,11 +192,13 @@ function SaleForm({ products, onSave, onClose }: { products: Product[]; onSave: 
       id: `txn-${Date.now()}`,
       type: 'sale',
       date: new Date().toISOString(),
-      items: items.map(({ _key, ...rest }) => rest),
+      items: items.map(({ _key, tierLabel, ...rest }) => rest),
       total,
       note,
     });
   };
+
+  const activeTier = tiers.find(t => t.id === selTier);
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
@@ -179,38 +207,85 @@ function SaleForm({ products, onSave, onClose }: { products: Product[]; onSave: 
           <DialogTitle className="font-display text-base">💰 Catat Penjualan</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-1">
-          <div className="flex gap-2">
-            <Select value={selProd} onValueChange={setSelProd}>
-              <SelectTrigger className="flex-1 h-9 rounded-lg font-body text-sm"><SelectValue placeholder="Pilih produk" /></SelectTrigger>
-              <SelectContent>{products.filter(p=>p.stock>0||p.stock<0).map(p => {
-                const wsInfo = p.priceWholesale && p.wholesaleMin ? ` | ≥${p.wholesaleMin}: ${formatRp(p.priceWholesale)}` : '';
-                return <SelectItem key={p.id} value={p.id}>{p.name} ({formatRp(p.priceSell)}{wsInfo})</SelectItem>;
-              })}</SelectContent>
+          {/* Product select */}
+          <div>
+            <Label className="font-body text-xs">Produk</Label>
+            <Select value={selProd} onValueChange={handleProdChange}>
+              <SelectTrigger className="mt-1 h-9 rounded-lg font-body text-sm"><SelectValue placeholder="Pilih produk" /></SelectTrigger>
+              <SelectContent>{products.filter(p => p.stock > 0 || p.stock < 0).map(p =>
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              )}</SelectContent>
             </Select>
-            <Input type="number" min={1} value={selQty} onChange={e => setSelQty(+e.target.value)} className="w-16 h-9 rounded-lg font-body text-sm text-center" />
-            <Button onClick={addItem} disabled={!selProd} className="h-9 rounded-lg font-body text-sm px-3"
-              style={{ background: 'var(--color-primary)', color: 'white' }}>+</Button>
           </div>
 
+          {/* Tier picker (only if product has tiers) */}
+          {selectedProduct && tiers.length > 1 && (
+            <div>
+              <Label className="font-body text-xs">Jenis Harga</Label>
+              <div className="flex gap-1.5 mt-1">
+                {tiers.map(t => (
+                  <button key={t.id} onClick={() => { setSelTier(t.id); setSelQty(t.min); }}
+                    className="flex-1 px-2 py-2 rounded-lg font-body text-[11px] text-center transition-all"
+                    style={{
+                      background: selTier === t.id
+                        ? t.id === 'eceran' ? 'var(--color-primary-light)' : t.id === 'semi' ? 'var(--color-warning-light)' : 'var(--color-promo-bg)'
+                        : 'var(--color-bg)',
+                      color: selTier === t.id
+                        ? t.id === 'eceran' ? 'var(--color-primary)' : t.id === 'semi' ? 'oklch(45% 0.12 85)' : 'var(--color-promo)'
+                        : 'var(--color-text-muted)',
+                      border: `1.5px solid ${selTier === t.id ? 'currentColor' : 'var(--color-border-subtle)'}`,
+                    }}>
+                    <div className="font-semibold">{t.label}</div>
+                    <div>{formatRp(t.price)}/{t.unit}</div>
+                    {t.min > 1 && <div className="opacity-70">min {t.min} {t.unit}</div>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Qty + Add */}
+          {selectedProduct && (
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <Label className="font-body text-xs">Jumlah ({activeTier?.unit || selectedProduct.unit})</Label>
+                <Input type="number" inputMode="numeric" min={1} value={selQty} onChange={e => setSelQty(+e.target.value)}
+                  className="mt-1 h-9 rounded-lg font-body text-sm" />
+              </div>
+              {activeTier && (
+                <div className="text-right pb-1">
+                  <p className="font-display text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
+                    {formatRp(activeTier.price * selQty)}
+                  </p>
+                </div>
+              )}
+              <Button onClick={addItem} disabled={!selProd || selQty < 1} className="h-9 rounded-lg font-body text-sm px-4"
+                style={{ background: 'var(--color-primary)', color: 'white' }}>Tambah</Button>
+            </div>
+          )}
+
+          {/* Item list */}
           {items.length > 0 && (
             <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--color-border-subtle)' }}>
-              {items.map(item => {
-                const prod = products.find(p => p.id === item.productId);
-                const tierLabel = prod ? getTierLabel(prod, item.qty) : '';
-                return (
+              {items.map(item => (
                 <div key={item._key} className="flex items-center gap-2 px-3 py-2 border-b last:border-b-0"
                   style={{ borderColor: 'var(--color-border-subtle)', background: 'var(--color-bg)' }}>
                   <span className="flex-1 font-body text-sm" style={{ color: 'var(--color-text-primary)' }}>
                     {item.productName} <span style={{ color: 'var(--color-text-muted)' }}>x{item.qty} @{formatRp(item.price)}</span>
-                    {tierLabel && <span className="ml-1 text-[10px] px-1 py-0.5 rounded" style={{ background: tierLabel === 'Grosir' ? 'var(--color-promo-bg)' : 'var(--color-warning-light)', color: tierLabel === 'Grosir' ? 'var(--color-promo)' : 'oklch(45% 0.12 85)' }}>{tierLabel}</span>}
+                    {item.tierLabel && (
+                      <span className="ml-1 text-[10px] px-1 py-0.5 rounded"
+                        style={{
+                          background: item.tierLabel === 'Grosir' ? 'var(--color-promo-bg)' : 'var(--color-warning-light)',
+                          color: item.tierLabel === 'Grosir' ? 'var(--color-promo)' : 'oklch(45% 0.12 85)',
+                        }}>{item.tierLabel}</span>
+                    )}
                   </span>
                   <span className="font-display text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
                     {formatRp(item.price * item.qty)}
                   </span>
                   <button onClick={() => setItems(items.filter(i => i._key !== item._key))} className="text-xs opacity-50 hover:opacity-100" style={{ color: 'var(--color-error)' }}>✕</button>
                 </div>
-                );
-              })}
+              ))}
               <div className="flex items-center justify-between px-3 py-2.5 font-display font-bold text-base"
                 style={{ background: 'var(--color-success-light)', color: 'var(--color-success)' }}>
                 <span>Total</span><span>{formatRp(total)}</span>
