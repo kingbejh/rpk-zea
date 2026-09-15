@@ -65,8 +65,14 @@ export default function ProductsPage({ products, onSave, onDelete }: Props) {
           {filtered.map(p => {
             const margin = p.priceSell - p.priceBuy;
             const marginPct = p.priceBuy > 0 ? ((margin / p.priceBuy) * 100).toFixed(0) : '0';
-            const hasSemi = p.semiWholesalePrice && p.semiWholesaleUnit;
-            const hasGrosir = p.wholesalePrice && p.wholesaleUnit;
+            const hasSemi = (p.semiWholesalePrice && p.semiWholesaleUnit) || (p.priceSemiWholesale && p.semiWholesaleMin);
+            const hasGrosir = (p.wholesalePrice && p.wholesaleUnit) || (p.priceWholesale && p.wholesaleMin);
+            const semiLabel = p.semiWholesaleUnit
+              ? `${formatRp(p.semiWholesalePrice!)}/${p.semiWholesaleUnit}${p.semiWholesaleMin && p.semiWholesaleMin > 1 ? ` (≥${p.semiWholesaleMin})` : ''}`
+              : `≥${p.semiWholesaleMin}: ${formatRp(p.priceSemiWholesale!)}/${p.unit}`;
+            const grosirLabel = p.wholesaleUnit
+              ? `${formatRp(p.wholesalePrice!)}/${p.wholesaleUnit}${p.wholesaleMin && p.wholesaleMin > 1 ? ` (≥${p.wholesaleMin})` : ''}`
+              : `≥${p.wholesaleMin}: ${formatRp(p.priceWholesale!)}/${p.unit}`;
             return (
               <div key={p.id} className="rounded-xl p-3.5 flex items-start gap-3"
                 style={{ background: 'var(--color-surface-elevated)', border: '1px solid var(--color-border-subtle)' }}>
@@ -96,15 +102,13 @@ export default function ProductsPage({ products, onSave, onDelete }: Props) {
                     {hasSemi && (
                       <span className="font-body text-[11px] px-1.5 py-0.5 rounded"
                         style={{ background: 'var(--color-warning-light)', color: 'oklch(45% 0.12 85)' }}>
-                        {formatRp(p.semiWholesalePrice!)}/{p.semiWholesaleUnit}
-                        {p.semiWholesaleMin && p.semiWholesaleMin > 1 ? ` (≥${p.semiWholesaleMin})` : ''}
+                        {semiLabel}
                       </span>
                     )}
                     {hasGrosir && (
                       <span className="font-body text-[11px] px-1.5 py-0.5 rounded"
                         style={{ background: 'var(--color-promo-bg)', color: 'var(--color-promo)' }}>
-                        {formatRp(p.wholesalePrice!)}/{p.wholesaleUnit}
-                        {p.wholesaleMin && p.wholesaleMin > 1 ? ` (≥${p.wholesaleMin})` : ''}
+                        {grosirLabel}
                       </span>
                     )}
                   </div>

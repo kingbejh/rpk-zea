@@ -136,26 +136,52 @@ function SaleForm({ products, onSave, onClose }: { products: Product[]; onSave: 
   const selectedProduct = products.find(p => p.id === selProd);
   const tiers = useMemo(() => {
     if (!selectedProduct) return [];
+    const p = selectedProduct;
     const t: { id: 'eceran' | 'semi' | 'grosir'; label: string; unit: string; price: number; min: number; qtyPerUnit: number }[] = [];
-    t.push({ id: 'eceran', label: 'Eceran', unit: selectedProduct.unit, price: selectedProduct.priceSell, min: 1, qtyPerUnit: 1 });
-    if (selectedProduct.semiWholesalePrice && selectedProduct.semiWholesaleUnit) {
+    t.push({ id: 'eceran', label: 'Eceran', unit: p.unit, price: p.priceSell, min: 1, qtyPerUnit: 1 });
+
+    // New format (semiWholesalePrice + semiWholesaleUnit)
+    if (p.semiWholesalePrice && p.semiWholesaleUnit) {
       t.push({
         id: 'semi', label: 'Semi-Grosir',
-        unit: selectedProduct.semiWholesaleUnit,
-        price: selectedProduct.semiWholesalePrice,
-        min: selectedProduct.semiWholesaleMin || 1,
-        qtyPerUnit: selectedProduct.semiWholesaleQty || 1,
+        unit: p.semiWholesaleUnit,
+        price: p.semiWholesalePrice,
+        min: p.semiWholesaleMin || 1,
+        qtyPerUnit: p.semiWholesaleQty || 1,
       });
     }
-    if (selectedProduct.wholesalePrice && selectedProduct.wholesaleUnit) {
+    // Legacy format (priceSemiWholesale per base unit)
+    else if (p.priceSemiWholesale && p.semiWholesaleMin) {
+      t.push({
+        id: 'semi', label: 'Semi-Grosir',
+        unit: p.unit,
+        price: p.priceSemiWholesale,
+        min: p.semiWholesaleMin,
+        qtyPerUnit: 1,
+      });
+    }
+
+    // New format (wholesalePrice + wholesaleUnit)
+    if (p.wholesalePrice && p.wholesaleUnit) {
       t.push({
         id: 'grosir', label: 'Grosir',
-        unit: selectedProduct.wholesaleUnit,
-        price: selectedProduct.wholesalePrice,
-        min: selectedProduct.wholesaleMin || 1,
-        qtyPerUnit: selectedProduct.wholesaleQty || 1,
+        unit: p.wholesaleUnit,
+        price: p.wholesalePrice,
+        min: p.wholesaleMin || 1,
+        qtyPerUnit: p.wholesaleQty || 1,
       });
     }
+    // Legacy format (priceWholesale per base unit)
+    else if (p.priceWholesale && p.wholesaleMin) {
+      t.push({
+        id: 'grosir', label: 'Grosir',
+        unit: p.unit,
+        price: p.priceWholesale,
+        min: p.wholesaleMin,
+        qtyPerUnit: 1,
+      });
+    }
+
     return t;
   }, [selectedProduct]);
 
